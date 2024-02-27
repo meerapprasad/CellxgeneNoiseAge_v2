@@ -4,6 +4,8 @@ import os
 import numpy as np
 import pandas as pd
 
+from tabula_senis.filter import extract_names
+
 def plot_heatmap(data, columns, title, filepath, figsize=(8, 6)):
     plt.figure(figsize=figsize)
     heatmap_data = np.log1p(data.reindex(columns=columns))
@@ -16,7 +18,8 @@ def plot_heatmap(data, columns, title, filepath, figsize=(8, 6)):
     plt.clf()
 
 
-def plot_count_distributions(adata_tissue, age, age_dict, gene_names, sorted_ages_mm, output_dir, fname='increase'):
+def plot_count_distributions(adata_tissue, age, age_dict, gene_names, sorted_ages_mm, age_col, output_dir,
+                             fname='increase'):
     n_genes = gene_names.shape[0]  # Number of genes to plot
     n_cols = 6  # Number of columns in the subplot # grid
     n_rows = (n_genes + n_cols - 1) // n_cols  # Calculate rows needed
@@ -26,8 +29,10 @@ def plot_count_distributions(adata_tissue, age, age_dict, gene_names, sorted_age
     colors = ['blue', 'orange', 'green', 'red', 'purple', 'yellow']  # [:len(age_groups)]
     # make a folder to save each one
     os.makedirs(os.path.join(output_dir, 'count_dist_noisy_genes'), exist_ok=True)
-    sub_ages = ['1m', '3m', sorted_ages_mm[age]]
-    sub_colors = [colors[0], colors[1], colors[age]]
+    # sub_ages = ['1m', '3m', sorted_ages_mm[age]]
+    # sub_colors = [colors[0], colors[1], colors[age]]
+    sub_ages = ['3m', sorted_ages_mm[age]]
+    sub_colors = [colors[0], colors[age]]
     # plot only 1m, 3m and final age group
     # todo: normalize based on gene counts ?
     for i, gene_idx in enumerate(np.where(adata_tissue.var['feature_name'].values.isin(gene_names))[0]):
@@ -36,7 +41,7 @@ def plot_count_distributions(adata_tissue, age, age_dict, gene_names, sorted_age
         for age_group, color in zip(sub_ages, sub_colors):
             # Select the cells for a given age group and gene
             vals = np.log1p(
-                np.array(adata_tissue[adata_tissue.obs['age'] == age_group, gene_idx].X.todense()).flatten())
+                np.array(adata_tissue[adata_tissue.obs[age_col] == age_group, gene_idx].X.todense()).flatten())
             # plt.hist(vals, bins=15, alpha=0.7, label=str(age_group), color=color, log=True, density=True)
             weights = np.ones_like(vals) / len(vals)
             # Plot the histogram with weights
@@ -56,8 +61,8 @@ def plot_count_distributions(adata_tissue, age, age_dict, gene_names, sorted_age
 # todo: plot all genes with non-zero slope
 def plot_linear_regression(slope, intercept, mean_filter_df, output_dir, n_plots=100, ncols=8, thresh=.005):
     # Sort the slopes and intercepts
-    slope_sorted_idx = np.argsort(slope)
-    intercept_sorted_idx = np.argsort(intercept)
+    ### TODO: NANs here ### -- where are they coming from?
+    slope_sorted_idx = np.argsort(np.nan_to_num(slope))
     # Get the top n_plots genes with the highest and lowest slopes and intercepts
     top_n_slope = slope_sorted_idx[-n_plots:]
     bottom_n_slope = slope_sorted_idx[:n_plots]
@@ -67,7 +72,8 @@ def plot_linear_regression(slope, intercept, mean_filter_df, output_dir, n_plots
     pd.DataFrame(slope[(slope < -thresh)]).to_csv(f'{output_dir}/decrease_slope_thresh_{thresh}.csv')
     # Plot the genes with the top n_plots slopes
     n_rows = int(np.ceil(len(top_n_slope) / ncols))
-    time_points = np.array(mean_filter_df.index.str.extract('(\d+)m')[0], dtype=int)
+    # time_points = np.array(mean_filter_df.index.str.extract('(\d+)m')[0], dtype=int)
+    time_points = extract_names(mean_filter_df)
 
     plt.figure(figsize=(5 * ncols, 4 * n_rows))  # Adjust figsize as needed
     for i, idx in enumerate(top_n_slope):
@@ -104,7 +110,8 @@ def plot_linear_regression(slope, intercept, mean_filter_df, output_dir, n_plots
             mean_filter_df.iloc[:, bottom_n_slope].columns.to_numpy())
 
 
-def plot_count_dist_noisy_gene_per_age(df_filtered, adata_tissue, sorted_ages_mm, clusters, age, age_dict, output_dir):
+def plot_count_dist_noisy_gene_per_age(df_filtered, adata_tissue, sorted_ages_mm, clusters, age, age_dict, age_col,
+                                       output_dir):
     ordered_df = df_filtered.iloc[:, clusters.tolist()]
     bool_idx = adata_tissue.var['feature_name'].values.isin(ordered_df.iloc[:, -500:].columns.to_numpy()[
                                                                 np.argmax(ordered_df.iloc[:, -500:], axis=0) == age])
@@ -117,7 +124,8 @@ def plot_count_dist_noisy_gene_per_age(df_filtered, adata_tissue, sorted_ages_mm
     colors = ['blue', 'orange', 'green', 'red', 'purple', 'yellow']  # [:len(age_groups)]
     # make a folder to save each one
     os.makedirs(os.path.join(output_dir, 'count_dist_noisy_genes'), exist_ok=True)
-    sub_ages = ['1m', '3m', sorted_ages_mm[age]]
+    # sub_ages = ['1m', '3m', sorted_ages_mm[age]]
+    sub_ages = ['3m', sorted_ages_mm[age]]
     sub_colors = [colors[0], colors[1], colors[age]]
     # plot only 1m, 3m and final age group
     # todo: normalize based on gene counts ?
@@ -127,7 +135,7 @@ def plot_count_dist_noisy_gene_per_age(df_filtered, adata_tissue, sorted_ages_mm
         for age_group, color in zip(sub_ages, sub_colors):
             # Select the cells for a given age group and gene
             vals = np.log1p(
-                np.array(adata_tissue[adata_tissue.obs['age'] == age_group, gene_idx].X.todense()).flatten())
+                np.array(adata_tissue[adata_tissue.obs[age_col] == age_group, gene_idx].X.todense()).flatten())
             # plt.hist(vals, bins=15, alpha=0.7, label=str(age_group), color=color, log=True, density=True)
             weights = np.ones_like(vals) / len(vals)
             # Plot the histogram with weights
