@@ -67,9 +67,14 @@ def plot_linear_regression(slope, intercept, mean_filter_df, output_dir, n_plots
     top_n_slope = slope_sorted_idx[-n_plots:]
     bottom_n_slope = slope_sorted_idx[:n_plots]
 
+    # todo: add the gene names
+    increase_df = (pd.DataFrame(slope[(slope >= thresh)]).set_index(mean_filter_df.columns.to_numpy()[slope >= thresh]).
+                   reset_index(drop=False).rename({'index': 'gene_name', 0: 'slope'}, axis=1))
+    decrease_df = (pd.DataFrame(slope[(slope <= -thresh)]).set_index(mean_filter_df.columns.to_numpy()[slope <= -thresh]).
+                   reset_index(drop=False).rename({'index': 'gene_name', 0: 'slope'}, axis=1))
     # todo: save the top and bot genes above and below a threshold
-    pd.DataFrame(slope[(slope > thresh)]).to_csv(f'{output_dir}/increase_slope_thresh_{thresh}.csv')
-    pd.DataFrame(slope[(slope < -thresh)]).to_csv(f'{output_dir}/decrease_slope_thresh_{thresh}.csv')
+    increase_df.to_csv(f'{output_dir}/increase_slope_thresh_{thresh}.csv', index=False)
+    decrease_df.to_csv(f'{output_dir}/decrease_slope_thresh_{thresh}.csv', index=False)
     # Plot the genes with the top n_plots slopes
     n_rows = int(np.ceil(len(top_n_slope) / ncols))
     # time_points = np.array(mean_filter_df.index.str.extract('(\d+)m')[0], dtype=int)

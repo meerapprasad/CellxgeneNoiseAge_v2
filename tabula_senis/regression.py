@@ -8,6 +8,7 @@ import numpy as np
 from tabula_senis.filter import filter_mean_cols, extract_names
 from tabula_senis.plots import plot_linear_regression
 
+# todo: also compute regression on variance
 
 def compute_log_mean_and_var(adata_tissue, sorted_ages_mm, age_col):
     # fano factor: var/ mean

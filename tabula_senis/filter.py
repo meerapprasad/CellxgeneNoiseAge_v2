@@ -22,13 +22,14 @@ def filter_ctype(adata, cell_type):
 def filter_tissue(adata, tissue):
     return adata[adata.obs.tissue.isin([f'{tissue}'])]
 
-
-def filter_mean_cols(log_mean_df, n_zeros=2):
+# todo: ensure that first entry is not zero
+def filter_mean_cols(log_mean_df, n_zeros=1):
     zero_mask = (log_mean_df == 0)
     # Count the number of zero entries per column
     zero_counts = zero_mask.sum(axis=0)
     mean_filter_df = log_mean_df.loc[:, zero_counts <= n_zeros]
-    return mean_filter_df
+    mean_filter_df2 = mean_filter_df.loc[:,~(mean_filter_df.iloc[0] == 0)]
+    return mean_filter_df2
 
 
 def filter_coeff_var(cv_df):
@@ -53,3 +54,4 @@ def extract_names(mean_filter_df):
     # If there's a second number (i.e., a range), calculate the average, otherwise use the first number
     time_points = np.where(extracted[1].isna(), extracted[0], (extracted[0] + extracted[1]) / 2)
     return time_points
+
